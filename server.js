@@ -2,8 +2,9 @@ const express = require('express');
 const app = express();
 const http = require('http').Server(app);
 const io = require('socket.io')(http);
-const fs = require('fs');
-const path = require('path');
+const { v4: uuidv4 } = require('uuid'); // For generating unique session IDs
+
+const sessions = {}; // Store sessions with IDs
 
 app.use(express.static('public'));
 
@@ -15,35 +16,35 @@ app.get('/listener', (req, res) => {
     res.sendFile(__dirname + '/public/listener.html');
 });
 
-// This endpoint will serve the audio stream directly
-app.get('/listen', (req, res) => {
-    res.writeHead(200, {
-        'Content-Type': 'audio/wav',
-        'Transfer-Encoding': 'chunked'
-    });
-
-    // Using the correct path to the audio file
-    const audioFilePath = path.join(__dirname, 'audio/sample.wav');
-    const audioStream = fs.createReadStream(audioFilePath);
-    audioStream.pipe(res);
-});
-
 io.on('connection', (socket) => {
     console.log('a user connected');
+
+    // Generate a unique session ID
+    const sessionId = uuidv4();
+    sessions[sessionId] = socket.id;
+
+    // Send session ID to the user
+    socket.emit('sessionID', sessionId);
+
     socket.on('disconnect', () => {
         console.log('user disconnected');
+        // Remove session ID when user disconnects
+        delete sessions[sessionId];
     });
 
-    socket.on('offer', (offer) => {
-        socket.broadcast.emit('offer', offer);
+    socket.on('offer', ({ offer, targetSessionId }) => {
+        // Send offer to the targeted user
+        io.to(sessions[targetSessionId]).emit('offer', { offer, senderSessionId: sessionId });
     });
 
-    socket.on('answer', (answer) => {
-        socket.broadcast.emit('answer', answer);
+    socket.on('answer', ({ answer, senderSessionId }) => {
+        // Send answer to the sender
+        io.to(sessions[senderSessionId]).emit('answer', answer);
     });
 
-    socket.on('candidate', (candidate) => {
-        socket.broadcast.emit('candidate', candidate);
+    socket.on('candidate', ({ candidate, targetSessionId }) => {
+        // Send candidate to the targeted user
+        io.to(sessions[targetSessionId]).emit('candidate', { candidate, senderSessionId: sessionId });
     });
 });
 
