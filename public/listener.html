@@ -12,23 +12,42 @@
     <script src="/socket.io/socket.io.js"></script>
     <script>
         const socket = io();
+        const audioElement = document.getElementById('remoteAudio');
         let peerConnection;
 
-        socket.on('offer', async offer => {
-            peerConnection = new RTCPeerConnection();
-            peerConnection.ontrack = event => {
-                const audioElement = document.getElementById('remoteAudio');
-                audioElement.srcObject = event.streams[0];
-            };
-            await peerConnection.setRemoteDescription(offer);
-            const answer = await peerConnection.createAnswer();
-            await peerConnection.setLocalDescription(answer);
-            socket.emit('answer', answer);
-        });
+        navigator.mediaDevices.getUserMedia({ audio: true })
+            .then(stream => {
+                socket.emit('join-room', 'listener');
 
-        socket.on('candidate', async candidate => {
-            await peerConnection.addIceCandidate(candidate);
-        });
+                socket.on('broadcaster', async () => {
+                    peerConnection = new RTCPeerConnection();
+                    stream.getTracks().forEach(track => peerConnection.addTrack(track, stream));
+                    peerConnection.ontrack = event => {
+                        audioElement.srcObject = event.streams[0];
+                    };
+
+                    const offer = await peerConnection.createOffer();
+                    await peerConnection.setLocalDescription(offer);
+                    socket.emit('offer', offer);
+                });
+
+                socket.on('answer', async (answer) => {
+                    await peerConnection.setRemoteDescription(answer);
+                });
+
+                socket.on('candidate', async (candidate) => {
+                    await peerConnection.addIceCandidate(candidate);
+                });
+
+                peerConnection.onicecandidate = event => {
+                    if (event.candidate) {
+                        socket.emit('candidate', event.candidate);
+                    }
+                };
+            })
+            .catch(error => {
+                console.error('Error accessing media devices:', error);
+            });
     </script>
 </body>
 </html>
