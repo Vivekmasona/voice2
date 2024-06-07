@@ -7,6 +7,14 @@ const PORT = process.env.PORT || 3000;
 
 app.use(express.static('public'));
 
+app.get('/', (req, res) => {
+    res.sendFile(__dirname + '/public/broadcaster.html');
+});
+
+app.get('/listener', (req, res) => {
+    res.sendFile(__dirname + '/public/listener.html');
+});
+
 io.on('connection', (socket) => {
     console.log('a user connected');
     socket.on('disconnect', () => {
