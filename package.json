@@ -1,18 +1,13 @@
 {
   "name": "web-communication-system",
   "version": "1.0.0",
-  "description": "A web communication system for broadcasting and listening to audio streams.",
+  "description": "WebRTC audio broadcasting system",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
   },
   "dependencies": {
-    "express": "^4.18.2",
-    "socket.io": "^4.5.4"
-  },
-  "engines": {
-    "node": ">=14.0.0"
-  },
-  "author": "vivek masona",
-  "license": "ISC"
+    "express": "^4.17.1",
+    "socket.io": "^4.0.0"
+  }
 }
