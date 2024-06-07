@@ -7,38 +7,27 @@
 </head>
 <body>
     <h1>Listener</h1>
-    <label for="sessionId">Enter Broadcaster's Session ID:</label>
-    <input type="text" id="sessionId">
-    <button onclick="connect()">Connect</button>
+    <audio id="remoteAudio" autoplay></audio>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
         const socket = io();
-        const sessionId = localStorage.getItem('sessionId');
+        let peerConnection;
 
-        function connect() {
-            const targetSessionId = document.getElementById('sessionId').value;
-            // Send offer to the broadcaster
-            socket.emit('offer', { offer: 'Your offer data', targetSessionId });
-        }
-
-        // Handle incoming offer
-        socket.on('offer', ({ offer, senderSessionId }) => {
-            if (senderSessionId === sessionId) {
-                // Handle offer and send answer
-                const answer = 'Your answer data';
-                socket.emit('answer', { answer, senderSessionId });
-            }
+        socket.on('offer', async offer => {
+            peerConnection = new RTCPeerConnection();
+            peerConnection.ontrack = event => {
+                const audioElement = document.getElementById('remoteAudio');
+                audioElement.srcObject = event.streams[0];
+            };
+            await peerConnection.setRemoteDescription(offer);
+            const answer = await peerConnection.createAnswer();
+            await peerConnection.setLocalDescription(answer);
+            socket.emit('answer', answer);
         });
 
-        // Handle incoming answer
-        socket.on('answer', (answer) => {
-            // Handle answer
-        });
-
-        // Handle incoming ICE candidate
-        socket.on('candidate', (candidate) => {
-            // Handle ICE candidate
+        socket.on('candidate', async candidate => {
+            await peerConnection.addIceCandidate(candidate);
         });
     </script>
 </body>
