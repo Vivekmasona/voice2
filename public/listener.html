@@ -1,71 +1,45 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Listener</title>
-    <style>
-        #controlPanel {
-            margin-top: 20px;
-            display: none;
-        }
-    </style>
 </head>
 <body>
     <h1>Listener</h1>
-    <div id="controlPanel">
-        <button id="listenButton">Listen</button>
-        <button id="stopButton" disabled>Stop</button>
-    </div>
+    <label for="sessionId">Enter Broadcaster's Session ID:</label>
+    <input type="text" id="sessionId">
+    <button onclick="connect()">Connect</button>
 
-    <script src="https://elemental-shiny-cardamom.glitch.me/socket.io/socket.io.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
     <script>
-        const socket = io('https://elemental-shiny-cardamom.glitch.me');
+        const socket = io();
+        const sessionId = localStorage.getItem('sessionId');
 
-        let remotePeerConnection;
-        let remoteAudio;
-
-        window.onload = listen;
-
-        function listen() {
-            const configuration = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
-
-            remotePeerConnection = new RTCPeerConnection(configuration);
-
-            remotePeerConnection.onicecandidate = e => {
-                if (e.candidate) {
-                    socket.emit('candidate', e.candidate);
-                }
-            };
-
-            remotePeerConnection.ontrack = event => {
-                remoteAudio = new Audio();
-                remoteAudio.srcObject = event.streams[0];
-                remoteAudio.play();
-            };
-
-            socket.on('offer', (offer) => {
-                remotePeerConnection.setRemoteDescription(new RTCSessionDescription(offer));
-                remotePeerConnection.createAnswer()
-                    .then(answer => {
-                        remotePeerConnection.setLocalDescription(answer);
-                        socket.emit('answer', answer);
-                    })
-                    .catch(error => console.error('Error creating answer.', error));
-            });
-
-            socket.on('candidate', (candidate) => {
-                const newCandidate = new RTCIceCandidate(candidate);
-                remotePeerConnection.addIceCandidate(newCandidate);
-            });
+        function connect() {
+            const targetSessionId = document.getElementById('sessionId').value;
+            // Send offer to the broadcaster
+            socket.emit('offer', { offer: 'Your offer data', targetSessionId });
         }
 
-        function stop() {
-            remotePeerConnection.close();
-            remotePeerConnection = null;
-            if (remoteAudio) {
-                remoteAudio.pause();
-                remoteAudio.srcObject = null;
+        // Handle incoming offer
+        socket.on('offer', ({ offer, senderSessionId }) => {
+            if (senderSessionId === sessionId) {
+                // Handle offer and send answer
+                const answer = 'Your answer data';
+                socket.emit('answer', { answer, senderSessionId });
             }
-        }
+        });
+
+        // Handle incoming answer
+        socket.on('answer', (answer) => {
+            // Handle answer
+        });
+
+        // Handle incoming ICE candidate
+        socket.on('candidate', (candidate) => {
+            // Handle ICE candidate
+        });
     </script>
 </body>
 </html>
