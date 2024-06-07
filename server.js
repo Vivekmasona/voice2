@@ -18,27 +18,29 @@ let broadcaster;
 io.on('connection', (socket) => {
     console.log('a user connected');
 
-    socket.on('broadcaster', (stream) => {
-        broadcaster = socket.id;
-        socket.broadcast.emit('broadcaster');
+    socket.on('join-room', (role) => {
+        if (role === 'broadcaster') {
+            broadcaster = socket.id;
+        }
+        if (broadcaster && role === 'listener') {
+            socket.to(broadcaster).emit('broadcaster');
+        }
     });
 
     socket.on('offer', (offer) => {
-        if (socket.id !== broadcaster) {
+        if (socket.id === broadcaster) {
+            socket.broadcast.emit('offer', offer);
+        } else {
             socket.to(broadcaster).emit('offer', offer);
         }
     });
 
     socket.on('answer', (answer) => {
-        if (socket.id === broadcaster) {
-            socket.broadcast.emit('answer', answer);
-        }
+        socket.to(broadcaster).emit('answer', answer);
     });
 
     socket.on('candidate', (candidate) => {
-        if (socket.id !== broadcaster) {
-            socket.to(broadcaster).emit('candidate', candidate);
-        }
+        socket.broadcast.emit('candidate', candidate);
     });
 
     socket.on('disconnect', () => {
